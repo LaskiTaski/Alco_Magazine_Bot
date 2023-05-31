@@ -1,7 +1,8 @@
 from aiogram.utils import executor
 from create_bot import  dp
 from data_base import sql_db_other
-from excel_table.load_et import *
+from excel_table import load_et
+
 # from handlers import other,client, admin
 # from data_base import sql_db_admin, sql_db_client
 #
@@ -14,5 +15,5 @@ from excel_table.load_et import *
 if __name__ == '__main__':
     print('Работаем!')
     sql_db_other.sql_start()
-    read_file()
+    load_et.read_file()
     executor.start_polling(dp, skip_updates=True)
