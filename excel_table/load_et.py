@@ -13,5 +13,4 @@ def read_file():
             line.append(ws[f'{j}{i}'].value)
 
         if None not in line:
-            sql_db_other.sql_add_command_admin(line)
-            # print(tuple(line))
+            sql_db_other.sql_add(line)
