@@ -1,25 +1,176 @@
 from aiogram import types, Dispatcher
 from aiogram.dispatcher import FSMContext
-from button import other_kb
+from aiogram.dispatcher.filters.state import State, StatesGroup
+from button.other_kb import *
+from database import sql_db_other
 
+
+class FSMAdmin(StatesGroup):
+    start = State()
 
 
 # @dp.message_handler( commands=['start'], state = '*' )
-async def cmd_start( message : types.Message, state : FSMContext ):
-    start_kb= types.InlineKeyboardMarkup(row_width=2)
-    start_kb.add(*other_kb.gen_chapter())
-    await message.answer(f'[Виды алкоголя](https://telegra.ph/Kakoj-vyberesh-ty-05-31)',
+async def cmd_start(message: types.Message, state: FSMContext):
+    """Показ всех ВИДОВ алкоголя"""
+
+    async with state.proxy() as data:
+        data['user'] = f'tg://user?id={message.from_user.id}'
+
+    start_kb = types.InlineKeyboardMarkup(row_width=2)
+    start_kb.add(*gen_chapter())
+
+    await FSMAdmin.start.set()
+    await message.answer(f'[Какой бывает алкоголь](https://telegra.ph/Kakoj-vyberesh-ty-05-31)',
                          reply_markup=start_kb)
 
 
 # @dp.callback_query_handler( text='start', state = '*' )
 async def cb_menu(callback: types.CallbackQuery):
-    start_kb= types.InlineKeyboardMarkup(row_width=2)
-    start_kb.add(*other_kb.gen_chapter())
+    """Показ всех ВИДОВ алкоголя"""
+
+    start_kb = types.InlineKeyboardMarkup(row_width=2)
+    start_kb.add(*gen_chapter())
+
+    await callback.message.edit_text(f'[Какой бывает алкоголь](https://telegra.ph/Kakoj-vyberesh-ty-05-31)',
+                                     reply_markup=start_kb)
+
+
+# @dp.callback_query_handler( lambda x: x.data in [i[0] for i in sql_db_other.sql_gen_chapter()], state = '*' )
+async def cb_alcohol(callback: types.CallbackQuery, state: FSMContext):
+    """Показ всех МАРОК алкоголя"""
+    global chapter
+
+    async with state.proxy() as data:
+        data['chapter'] = callback.data
+
+    user_data = await state.get_data()
+    chapter = user_data['chapter']
+
+    start_kb = types.InlineKeyboardMarkup(row_width=2)
+    start_kb.add(*gen_names(chapter))
+    start_kb.row(allmenu)
+
     await callback.message.edit_text(f'[Виды алкоголя](https://telegra.ph/Kakoj-vyberesh-ty-05-31)',
                                      reply_markup=start_kb)
 
 
-def register_handlers_other(dp : Dispatcher):
+# @dp.callback_query_handler( lambda x: x.data in [i[0] for i in sql_db_other.sql_gen_chapter()], state = '*' )
+async def cb_trademark(callback: types.CallbackQuery, state: FSMContext):
+    """Показ всей ИНФОРМАЦИИ  об алкоголе"""
+
+    async with state.proxy() as data:
+        data['product'] = callback.data # Сохраняем имя продукта
+        data['quantity'] = 0
+
+    user_data = await state.get_data()
+    product = user_data['product'] # Вытаскиваем имя товара
+    chapter = user_data['chapter'] # Вытаскиваем имя раздела
+    user = user_data['user'] # Вытаскиваем имя пользователя
+    quanti = user_data['quantity'] # Вытаскиваем кол-во
+
+    all_info = sql_db_other.sql_gen_info(product) #Вся информация о товаре
+    price = all_info[0]
+    url_telegraph = all_info[1]
+    in_stock = all_info[2]
+    all_price = quanti*price
+
+    product_information = [user, product, quanti, price, all_price]
+    await sql_db_client.sql_add_client(product_information)
+
+    start_kb = types.InlineKeyboardMarkup(row_width=3)
+    quantity = InlineKeyboardButton(str(sql_db_client.sql_read_client(product)[0]), callback_data='None')
+    back = InlineKeyboardButton('Назад◀', callback_data=chapter)
+
+    start_kb.add(plus, quantity, minus)
+    start_kb.row(back, allmenu)
+
+    print(quanti)
+    print(sql_db_client.sql_read_client(product))
+    await callback.message.edit_text(f'[{product}]({url_telegraph})\n'
+                                     f'Цена: {price}руб.\n'
+                                     f'Всего на складе: {in_stock}шт.',
+                                     reply_markup=start_kb)
+
+# @dp.callback_query_handler( text='plus', state = '*' )
+async def cb_plus(callback: types.CallbackQuery, state: FSMContext):
+    """Добавить алкого"""
+
+    async with state.proxy() as data:
+        data['quantity'] += 1
+
+    user_data = await state.get_data()
+    product = user_data['product']  # Вытаскиваем имя товара
+    quanti = user_data['quantity']
+
+    all_info = sql_db_other.sql_gen_info(product)  # Вся информация о товаре
+    price = all_info[0]
+    url_telegraph = all_info[1]
+    in_stock = all_info[2]
+    all_price = quanti * price
+
+    await sql_db_client.sql_update_client('Количество', quanti, product)
+    await sql_db_client.sql_update_client('Общая', all_price, product)
+
+    start_kb = types.InlineKeyboardMarkup(row_width=3)
+    print(sql_db_client.sql_read_client(product))
+    quantity = InlineKeyboardButton(str(sql_db_client.sql_read_client(product)[0]), callback_data='None')
+    back = InlineKeyboardButton('Назад◀', callback_data=chapter)
+
+    start_kb.add(plus, quantity, minus)
+    start_kb.row(back, allmenu)
+
+    await callback.message.edit_text(f'[{product}]({url_telegraph})\n'
+                                     f'Цена: {price}руб.\n'
+                                     f'Всего на складе: {in_stock}шт.'
+                                     f'В вашей корзине: '
+                                     f'Хотите добавить: {quanti}',
+                                     reply_markup=start_kb)
+
+
+# @dp.callback_query_handler( text='minus', state = '*' )
+async def cb_minus(callback: types.CallbackQuery, state: FSMContext):
+    """Добавить алкого"""
+
+    async with state.proxy() as data:
+        if data['quantity'] > 0:
+            data['quantity'] -= 1
+
+    user_data = await state.get_data()
+    product = user_data['product']  # Вытаскиваем имя товара
+    quanti = user_data['quantity']
+
+    all_info = sql_db_other.sql_gen_info(product)  # Вся информация о товаре
+    price = all_info[0]
+    url_telegraph = all_info[1]
+    in_stock = all_info[2]
+    all_price = quanti * price
+
+    await sql_db_client.sql_update_client('Количество', quanti, product)
+    await sql_db_client.sql_update_client('Общая', all_price, product)
+
+    start_kb = types.InlineKeyboardMarkup(row_width=3)
+    print(sql_db_client.sql_read_client(product))
+    quantity = InlineKeyboardButton(str(sql_db_client.sql_read_client(product)[0]), callback_data='None')
+    back = InlineKeyboardButton('Назад◀', callback_data=chapter)
+
+    start_kb.add(plus, quantity, minus)
+    start_kb.row(back, allmenu)
+
+    await callback.message.edit_text(f'[{product}]({url_telegraph})\n'
+                                     f'Цена: {price}руб.\n'
+                                     f'Всего на складе: {in_stock}шт.'
+                                     f'В вашей корзине: '
+                                     f'Хотите добавить: {quanti}',
+                                     reply_markup=start_kb)
+
+
+
+def register_handlers_other(dp: Dispatcher):
     dp.register_message_handler(cmd_start, commands=['start'], state='*')
     dp.register_callback_query_handler(cb_menu, text='start', state='*')
+    dp.register_callback_query_handler(cb_alcohol, lambda x: x.data in [i[0] for i in sql_db_other.sql_gen_chapter()],
+                                       state='*')
+    dp.register_callback_query_handler(cb_trademark, lambda x: x.data in [i[0] for i in sql_db_other.sql_gen_name(chapter)],
+                                       state='*')
+    dp.register_callback_query_handler(cb_plus, text='plus', state = '*')
+    dp.register_callback_query_handler(cb_minus, text='minus', state='*')
