@@ -4,7 +4,6 @@ from dotenv import load_dotenv
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 import os
 
-
 load_dotenv()
 TOKEN_API = os.getenv('TOKEN_API')
 ID = os.getenv('ID')

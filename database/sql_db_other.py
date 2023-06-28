@@ -1,39 +1,55 @@
 import sqlite3 as sq
 
 
-def sql_start():
-    global base, cur
+def plus(name):
+    """
+    Добавляет +1 выбранный товар в БД пользователя.
+    :param name: Название товара который хотим добавить.
+    """
     base = sq.connect('magazine.dp')
-    cur = base.cursor()
-    print("Product data uploaded...")
-    if base:
-        base.execute('CREATE TABLE IF NOT EXISTS alcohol('
-                     'Раздел TEXT,'
-                     'Название TEXT,'
-                     'Цена INTEGER,'
-                     'Описание TEXT,'
-                     'Склад INTEGER)'
-                     )
-    base.commit()
+    try:
+        cur = base.cursor()
+        cur.execute(f"SELECT Количество FROM alcohol WHERE Название='{name}'")
+        result = cur.fetchone()[0]
+        result -= 1
+        cur.execute(f"UPDATE alcohol set Количество= {result} WHERE Название='{name}'")
+        base.commit()
+        print(f"plus ------> Other✓")
+    except sq.Error as error:
+        print(f"PLUS ERROR {error} ------> OTHER -----------------------> OTHER")
 
 
-def sql_add(line):
-    cur.execute('INSERT OR IGNORE INTO alcohol VALUES (?, ?, ?, ?, ?)', tuple(line))
-    base.commit()
+def minus(name):
+    """
+    Добавляет +1 выбранный товар в БД пользователя.
+    :param name: Название товара который хотим добавить.
+    """
+    base = sq.connect('magazine.dp')
+    try:
+        cur = base.cursor()
+        cur.execute(f"SELECT Количество FROM alcohol WHERE Название='{name}'")
+        result = cur.fetchone()[0]
+        result += 1
+        cur.execute(f"UPDATE alcohol set Количество= {result} WHERE Название='{name}'")
+        base.commit()
+        print(f"minus ------> Other✓")
+    except sq.Error as error:
+        print(f"MINUS ERROR {error} ------> OTHER -----------------------> OTHER")
 
 
-def sql_gen_chapter():
-    cur.execute("SELECT Раздел FROM alcohol")
-    result = set(cur.fetchall())
-    return result
+def read(name):
+    """
+    :param name: Название искомого товара для получения количества.
+    :return: Возвращает кол-во товара на складе.
+    """
+    base = sq.connect('magazine.dp')
+    try:
+        cur = base.cursor()
+        cur.execute(f"SELECT Количество FROM alcohol WHERE Название='{name}'")
+        records = cur.fetchone()
+        base.close()
+        print(f"read ------> Other✓")
+        return records
 
-
-def sql_gen_name(name):
-    cur.execute(f"SELECT Название FROM alcohol WHERE Раздел='{name}'")
-    result = set(cur.fetchall())
-    return result
-
-def sql_gen_info(name):
-    cur.execute(f"SELECT Цена, Описание, Склад FROM alcohol WHERE Название='{name}'")
-    result = cur.fetchone()
-    return result
+    except sq.Error as error:
+        print(f"READ ERROR {error} ------> OTHER -----------------------> OTHER")

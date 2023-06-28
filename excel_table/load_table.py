@@ -1,5 +1,5 @@
 from openpyxl import load_workbook
-from database import sql_db_other
+from database import sql_db_gen
 
 wb = load_workbook(filename='КрасноеБелое.xlsx')
 ws = wb['Magazine']
@@ -12,4 +12,5 @@ def read_file():
             line.append(ws[f'{j}{i}'].value)
 
         if None not in line:
-            sql_db_other.sql_add(line)
+            sql_db_gen.add(line)
+    print(f"add ------> gen✓")
