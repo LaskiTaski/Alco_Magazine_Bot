@@ -3,7 +3,7 @@ from aiogram.types import InlineKeyboardButton
 
 
 # Возвращает все виды алкоголя.
-def gen_chapter():
+def gen_chapter(): # Генерируем список кнопок
     chapter_list = []
     for i in sql_db_other.sql_gen_chapter():
         chapter_list.append(button := InlineKeyboardButton(i[0], callback_data=i[0]))
@@ -21,3 +21,4 @@ allmenu = InlineKeyboardButton('Главное меню🔙', callback_data='sta
 
 plus = InlineKeyboardButton('+', callback_data='plus')
 minus = InlineKeyboardButton('-', callback_data='minus')
+check = InlineKeyboardButton('Выдать чек', callback_data='drop_check')

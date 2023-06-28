@@ -13,11 +13,11 @@ class FSMAdmin(StatesGroup):
 async def cmd_start(message: types.Message, state: FSMContext):
     """Показ всех ВИДОВ алкоголя"""
 
-    async with state.proxy() as data:
-        data['user'] = f'tg://user?id={message.from_user.id}'
+    async with state.proxy() as data: # Данных в FSM
+        data['user'] = f'tg://user?id={message.from_user.id}' # Сохраняем ID пользователя
 
     start_kb = types.InlineKeyboardMarkup(row_width=2)
-    start_kb.add(*gen_chapter())
+    start_kb.add(*gen_chapter()) # Генерируем Разделы
 
     await FSMAdmin.start.set()
     await message.answer(f'[Какой бывает алкоголь](https://telegra.ph/Kakoj-vyberesh-ty-05-31)',
@@ -29,7 +29,7 @@ async def cb_menu(callback: types.CallbackQuery):
     """Показ всех ВИДОВ алкоголя"""
 
     start_kb = types.InlineKeyboardMarkup(row_width=2)
-    start_kb.add(*gen_chapter())
+    start_kb.add(*gen_chapter()) #Генерируем Разделы
 
     await callback.message.edit_text(f'[Какой бывает алкоголь](https://telegra.ph/Kakoj-vyberesh-ty-05-31)',
                                      reply_markup=start_kb)
@@ -41,14 +41,14 @@ async def cb_alcohol(callback: types.CallbackQuery, state: FSMContext):
     global chapter
 
     async with state.proxy() as data:
-        data['chapter'] = callback.data
+        data['chapter'] = callback.data # Сохраняем предыдущий запрос раздела
 
     user_data = await state.get_data()
-    chapter = user_data['chapter']
+    chapter = user_data['chapter'] # Вызываем запрос раздела из FSM
 
     start_kb = types.InlineKeyboardMarkup(row_width=2)
-    start_kb.add(*gen_names(chapter))
-    start_kb.row(allmenu)
+    start_kb.add(*gen_names(chapter)) # Генерируем марки алкоголя
+    start_kb.row(allmenu)# Отдельной строкой добавляем кнопки "ГЛАВНОЕ МЕНЮ"
 
     await callback.message.edit_text(f'[Виды алкоголя](https://telegra.ph/Kakoj-vyberesh-ty-05-31)',
                                      reply_markup=start_kb)
@@ -60,7 +60,7 @@ async def cb_trademark(callback: types.CallbackQuery, state: FSMContext):
 
     async with state.proxy() as data:
         data['product'] = callback.data # Сохраняем имя продукта
-        data['quantity'] = 0
+        data['quantity'] = 0 # Создаём для каждого пользователя счётчик конкретного алкоголя
 
     user_data = await state.get_data()
     product = user_data['product'] # Вытаскиваем имя товара
@@ -69,10 +69,10 @@ async def cb_trademark(callback: types.CallbackQuery, state: FSMContext):
     quanti = user_data['quantity'] # Вытаскиваем кол-во
 
     all_info = sql_db_other.sql_gen_info(product) #Вся информация о товаре
-    price = all_info[0]
-    url_telegraph = all_info[1]
-    in_stock = all_info[2]
-    all_price = quanti*price
+    price = all_info[0] # Цена
+    url_telegraph = all_info[1] # Ссылка на описание товара
+    in_stock = all_info[2] # Информация о кол-ве товара на складе
+    all_price = quanti*price # Расчёт стоимости
 
     product_information = [user, product, quanti, price, all_price]
     await sql_db_client.sql_add_client(product_information)
@@ -96,11 +96,14 @@ async def cb_plus(callback: types.CallbackQuery, state: FSMContext):
     """Добавить алкого"""
 
     async with state.proxy() as data:
-        data['quantity'] += 1
+        data['quantity'] += 1 # Добавляем в кол-во 1
+
 
     user_data = await state.get_data()
     product = user_data['product']  # Вытаскиваем имя товара
-    quanti = user_data['quantity']
+    quanti = user_data['quantity'] # Вытаскиваем кол-во по конкретному товару
+
+    sql_db_other.sql_plus(product)
 
     all_info = sql_db_other.sql_gen_info(product)  # Вся информация о товаре
     price = all_info[0]
@@ -129,7 +132,7 @@ async def cb_plus(callback: types.CallbackQuery, state: FSMContext):
 
 # @dp.callback_query_handler( text='minus', state = '*' )
 async def cb_minus(callback: types.CallbackQuery, state: FSMContext):
-    """Добавить алкого"""
+    """Добавить алкоголь"""
 
     async with state.proxy() as data:
         if data['quantity'] > 0:
@@ -137,7 +140,7 @@ async def cb_minus(callback: types.CallbackQuery, state: FSMContext):
 
     user_data = await state.get_data()
     product = user_data['product']  # Вытаскиваем имя товара
-    quanti = user_data['quantity']
+    quanti = user_data['quantity'] # Вытаскиваем кол-во товара
 
     all_info = sql_db_other.sql_gen_info(product)  # Вся информация о товаре
     price = all_info[0]
@@ -161,6 +164,24 @@ async def cb_minus(callback: types.CallbackQuery, state: FSMContext):
                                      f'Всего на складе: {in_stock}шт.'
                                      f'В вашей корзине: '
                                      f'Хотите добавить: {quanti}',
+                                     reply_markup=start_kb)
+
+
+# @dp.callback_query_handler( text='drop_check', state = '*' )
+async def cb_check(callback: types.CallbackQuery, state: FSMContext):
+    """Выдать чек"""
+    # 1846023358
+    async with state.proxy() as data:
+        data['chapter'] = callback.data # Сохраняем предыдущий запрос раздела
+
+    user_data = await state.get_data()
+    chapter = user_data['chapter'] # Вызываем запрос раздела из FSM
+
+    start_kb = types.InlineKeyboardMarkup(row_width=2)
+    start_kb.add(*gen_names(chapter)) # Генерируем марки алкоголя
+    start_kb.row(allmenu)# Отдельной строкой добавляем кнопки "ГЛАВНОЕ МЕНЮ"
+
+    await callback.message.edit_text(f'[Виды алкоголя](https://telegra.ph/Kakoj-vyberesh-ty-05-31)',
                                      reply_markup=start_kb)
 
 

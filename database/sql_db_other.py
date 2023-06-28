@@ -37,3 +37,9 @@ def sql_gen_info(name):
     cur.execute(f"SELECT Цена, Описание, Склад FROM alcohol WHERE Название='{name}'")
     result = cur.fetchone()
     return result
+
+def sql_plus(name):
+    cur.execute(f"SELECT Склад FROM alcohol WHERE Название='{name}'")
+    result = cur.fetchone()[0]-1
+    cur.execute(f"UPDATE alcohol set Склад= {result} WHERE Название='{name}'")
+    print(f'{result} Значение из таблицы')
