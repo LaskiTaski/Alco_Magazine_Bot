@@ -77,7 +77,10 @@ async def cb_trademark(callback: types.CallbackQuery, state: FSMContext):
 
     async with state.proxy() as data:
         data['product'] = callback.data  # Сохраняем имя продукта
-        data['quantity'] = 0  # Создаём для каждого пользователя счётчик конкретного алкоголя
+        if sql_db_client.read(data['product']) != None:
+            data['quantity'] = sql_db_client.read(data['product'])[0]
+        else:
+            data['quantity'] = 0  # Создаём для каждого пользователя счётчик конкретного алкоголя
 
     data = await state.get_data()
     product = data['product']  # Вытаскиваем имя товара
@@ -92,7 +95,13 @@ async def cb_trademark(callback: types.CallbackQuery, state: FSMContext):
     all_price = quanti * price  # Расчёт стоимости
 
     product_information = [user, product, quanti, price, all_price]
-    await sql_db_client.add(product_information)
+    if sql_db_client.in_the_table(user, product, quanti) == []:
+        print('Добавляем товар')
+        await sql_db_client.add(product_information)
+    else:
+        print('Обновляем товар')
+        await sql_db_client.updata('Количество', quanti, product)
+        await sql_db_client.updata('Общая', all_price, product)
 
     start_kb = types.InlineKeyboardMarkup(row_width=3)
     quantity = InlineKeyboardButton(str(sql_db_client.read(product)[0]), callback_data='None')
@@ -120,16 +129,14 @@ async def cb_plus(callback: types.CallbackQuery, state: FSMContext):
     product = data['product']  # Вытаскиваем имя товара
 
     async with state.proxy() as data:
-        try:
-            if sql_db_other.read(product)[0] != 0:
-                sql_db_other.plus(product)
-                data['quantity'] += 1  # Добавляем в кол-во 1
-                print(f"{data['quantity']},Добавлено")
-        except:
+        if sql_db_other.read(product)[0] != 0:
+            sql_db_other.plus(product)
+            data['quantity'] += 1  # Добавляем в кол-во 1
+        else:
             await callback.answer(text='На складе данного товара больше нет.', show_alert=True)
             print(f"PLUS ERROR------> OTHER HANDLER -----------------------> OTHER HANDLER")
 
-    quanti = data['quantity']  # Вытаскиваем кол-во по конкретному товару
+    quanti = data['quantity']  # Вытаскиваем кол-во
 
     all_info = sql_db_gen.info(product)  # Вся информация о товаре
     price = all_info[0]
@@ -175,7 +182,7 @@ async def cb_minus(callback: types.CallbackQuery, state: FSMContext):
             await callback.answer(text='Убирать больше нечего.', show_alert=True)
             print(f"MINUS ERROR------> OTHER HANDLER -----------------------> OTHER HANDLER")
 
-    quanti = data['quantity']  # Вытаскиваем кол-во товара
+    quanti = data['quantity']  # Вытаскиваем кол-во
 
     all_info = sql_db_gen.info(product)  # Вся информация о товаре
     price = all_info[0]
@@ -196,8 +203,8 @@ async def cb_minus(callback: types.CallbackQuery, state: FSMContext):
 
     await callback.message.edit_text(f'[{product}]({url_telegraph})\n'
                                      f'Цена: {price}руб.\n'
-                                     f'Всего на складе: {in_stock}шт.'
-                                     f'В вашей корзине: ??'
+                                     f'Всего на складе: {in_stock}шт.\n'
+                                     f'В вашей корзине: ??\n'
                                      f'Хотите добавить: {quanti}',
                                      reply_markup=start_kb)
 
@@ -216,6 +223,23 @@ async def cb_check(callback: types.CallbackQuery, state: FSMContext):
     start_kb = types.InlineKeyboardMarkup(row_width=1)
     back = InlineKeyboardButton('Назад◀', callback_data=chapter)
     start_kb.add(back, buy)
+    await callback.message.edit_text(f'Ваш заказ:\n{sql_db_client.check(ID)}',
+                                     reply_markup=start_kb)
+
+# @dp.callback_query_handler( text='buy', state = '*' )
+async def cb_buy(callback: types.CallbackQuery, state: FSMContext):
+    """
+    Выдать чек.
+    :param callback:  Нажатие на кнопку Оплатить.
+    :param state: Состояние - любое.
+    """
+
+    async with state.proxy() as data:
+        ID = data['user']
+
+    start_kb = types.InlineKeyboardMarkup(row_width=1)
+    back = InlineKeyboardButton('Назад◀', callback_data=chapter)
+    start_kb.add(back)
     await callback.message.edit_text(f'Ваш заказ:\n{sql_db_client.check(ID)}',
                                      reply_markup=start_kb)
 

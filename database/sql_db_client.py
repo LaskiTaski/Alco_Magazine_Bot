@@ -62,6 +62,24 @@ async def updata(key: str, value: (int, float), product: str):
         print(f"UPDATE ERROR {error} ------> CLIENT -----------------------> CLIENT")
 
 
+def in_the_table(user, product, quanti):
+    base = sq.connect('magazine.dp')
+    try:
+        cur = base.cursor()
+        cur.execute(f"SELECT * FROM information_base "
+                    f"WHERE Название='{product}' AND "
+                    f"Пользователь='{user}' AND "
+                    f"Количество='{quanti}'")
+        records = cur.fetchall()
+        base.close()
+        print(f"in the table ------> client✓")
+        return records
+
+    except sq.Error as error:
+        print(error)
+        print(f"IN THE TABLE {product} НЕ НАЙДЕННО ------> CLIENT -----------------------> CLIENT")
+
+
 def read(name: str):
     """
     Считывание кол-ва товаров по названию в БД для пользователя.
@@ -78,6 +96,7 @@ def read(name: str):
         return records
 
     except sq.Error as error:
+        print(name)
         print(f"READ ERROR {error} ------> CLIENT -----------------------> CLIENT")
 
 
@@ -91,17 +110,20 @@ def check(id):
     base = sq.connect('magazine.dp')
     try:
         cur = base.cursor()
-        cur.execute(f"SELECT Название, Количество, Общая FROM information_base WHERE Пользователь={id}")
+        cur.execute(f"SELECT Название, Количество, Общая FROM information_base WHERE Пользователь='{id}'")
         result = cur.fetchall()
         text = ''
         name = [' \n', 'шт.', 'руб.']
         summa = 0
         for product in result:
-            for k, v in zip(product, name):
-                if v == 'руб.':
-                    summa += k
-                text += str(k) + v + '     '
-            text += '\n\n'
+            if product[1] != 0:
+                for k, v in zip(product, name):
+                    if v == 'руб.':
+                        k = round(k, 2)
+                        summa += k
+
+                    text += str(k) + v + '     '
+                text += '\n\n'
         text += f'Общая сумма: {round(summa, 2)}'
 
         base.close()
