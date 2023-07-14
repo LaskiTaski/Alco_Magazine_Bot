@@ -3,6 +3,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from button.other_kb import *
 from database import sql_db_gen, sql_db_client
+from create_bot import bot
 
 
 class FSMAdmin(StatesGroup):
@@ -223,8 +224,9 @@ async def cb_check(callback: types.CallbackQuery, state: FSMContext):
     start_kb = types.InlineKeyboardMarkup(row_width=1)
     back = InlineKeyboardButton('Назад◀', callback_data=chapter)
     start_kb.add(back, buy)
-    await callback.message.edit_text(f'Ваш заказ:\n{sql_db_client.check(ID)}',
+    await callback.message.edit_text(f'Ваш заказ:\n{sql_db_client.check(ID)[0]}',
                                      reply_markup=start_kb)
+
 
 # @dp.callback_query_handler( text='buy', state = '*' )
 async def cb_buy(callback: types.CallbackQuery, state: FSMContext):
@@ -233,15 +235,27 @@ async def cb_buy(callback: types.CallbackQuery, state: FSMContext):
     :param callback:  Нажатие на кнопку Оплатить.
     :param state: Состояние - любое.
     """
+    my_check = True
 
     async with state.proxy() as data:
         ID = data['user']
 
-    start_kb = types.InlineKeyboardMarkup(row_width=1)
-    back = InlineKeyboardButton('Назад◀', callback_data=chapter)
-    start_kb.add(back)
-    await callback.message.edit_text(f'Ваш заказ:\n{sql_db_client.check(ID)}',
-                                     reply_markup=start_kb)
+    if my_check == True:
+        await bot.send_message(chat_id=1846023358,
+                               text=f'[{callback.from_user.username}](tg://user?id={callback.from_user.id}),\n'
+                                    f'Список покупок: \n{sql_db_client.check(ID)[0]} ',
+                               )
+        await callback.answer(text=f'Ваш заказ оплачен.\n{sql_db_client.check(ID)[0]}\nСпасибо за покупку!',
+                              show_alert=True)
+
+        start_kb = types.InlineKeyboardMarkup(row_width=2)
+        start_kb.add(*gen_chapter())  # Генерируем Разделы
+        start_kb.row(check, buy)
+
+        await callback.message.edit_text(f'[Какой бывает алкоголь](https://telegra.ph/Kakoj-vyberesh-ty-05-31)',
+                                         reply_markup=start_kb)
+    else:
+        await callback.answer(text='К сожалению вы не оплатили заказ.', show_alert=True)
 
 
 def register_handlers_other(dp: Dispatcher):
@@ -258,3 +272,4 @@ def register_handlers_other(dp: Dispatcher):
     dp.register_callback_query_handler(cb_plus, text='plus', state='*')
     dp.register_callback_query_handler(cb_minus, text='minus', state='*')
     dp.register_callback_query_handler(cb_check, text='drop_check', state='*')
+    dp.register_callback_query_handler(cb_buy, text='buy', state='*')

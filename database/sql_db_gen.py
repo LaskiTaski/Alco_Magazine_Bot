@@ -40,7 +40,6 @@ def add(line: list):
         print(f"ADD ERROR {error} ------> GEN")
 
 
-
 def chapter():
     """
     Заполняет разделы БД.
@@ -74,6 +73,7 @@ def name(name: str):
         return result
     except sq.Error as error:
         print(f"GENERATION ------> NAME ERROR {error} ------> GEN -----------------------> GEN")
+
 
 def info(name):
     """

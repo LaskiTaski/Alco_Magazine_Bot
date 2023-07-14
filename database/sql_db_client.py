@@ -128,8 +128,7 @@ def check(id):
 
         base.close()
         print(f"check ------> client✓")
-        print(text)
-        return text
+        return [text, summa]
 
     except sq.Error as error:
         print(f"CHECK ERROR {error} ------> CLIENT -----------------------> CLIENT")
